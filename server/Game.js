@@ -124,16 +124,48 @@ class Game {
     }
   }
 
-  resolveActionsOnPriority(actionList, priorityNum) {
-    for (var i = 0; i < actionList.length; i++) {
-      let action = actionList[i]
-      action.perform.apply(action.user)
+  resolveActionsOnPriority(actionList, nextPriorityCallback) {
+    if (actionList.length === 0) {
+      return
     }
+
+    debugger
+
+    let counter = 0
+    let action = null
+
+    const doActionSequence = function(){
+      debugger
+      action = actionList[counter]
+      console.log(action.owner.name, action.name)
+      EE.on(`${action.owner.name}:actionInputDone`, action.perform)
+      EE.emit(`${action.owner.name}:needActionInput`, {player: action.owner, action: action})
+    }
+
+    const handleNextActionSequence = function(data) {
+      EE.removeListener(`${action.owner.name}:actionInputDone`, action.perform)
+      counter++
+
+      console.log('handlingNextActionSequece, counter=', counter)
+
+      if (counter !== actionList.length) {
+        doActionSequence()
+      } else {
+        EE.removeListener('nextActionSequence', handleNextActionSequence)
+        nextPriorityCallback()
+      }
+    }
+
+    EE.on('nextActionSequence', handleNextActionSequence)
+
+    doActionSequence()
   }
 
   doTurn() {
-    console.log('TURN:', this.phaseNumber)
-    for (var i = 1; i <= this.priorityLimit; i++) {
+    console.log('phaseNumber:', this.phaseNumber)
+    this.priorityNumber = 1
+
+    const doPriorityTurn = () => {
       let actionsOnThisPriority = []
       for (var k = 0; k < this.players.length; k++) {
         const player = this.players[k]
@@ -143,25 +175,37 @@ class Game {
         }
 
         let currentPlayerAction = player.currentActions[this.phaseNumber]
-        if (currentPlayerAction.priority === i) {
+        if (currentPlayerAction.priority === this.priorityNumber) {
           actionsOnThisPriority.push(currentPlayerAction)
+
+          // move these after resolving!!!!!!!!
           player.discardPile.push(currentPlayerAction)
           player.currentActions[this.phaseNumber] = null
         }
       }
+
       // all actions on this priority are queued up, resolve them
-      this.resolveActionsOnPriority(actionsOnThisPriority, i)
+      console.log('before resolving', this.priorityNumber)
+      this.resolveActionsOnPriority(actionsOnThisPriority, () => {
+        debugger
+        if (this.priorityNumber <= this.priorityLimit) {
+          this.priorityNumber++
+          doPriorityTurn()
+        }
+        else {
+          if (this.phaseNumber < 1) {
+            this.phaseNumber++
+            this.doTurn()
+          }
+          else {
+            this.sortPlayersInTurnOrder()
+            this.startTurn()
+          }
+        }
+      })
     }
 
-    if (this.phaseNumber < 1) {
-      // do second phase of this turn
-      this.phaseNumber++
-      this.doTurn()
-    }
-    else {
-      this.sortPlayersInTurnOrder()
-      this.startTurn()
-    }
+    doPriorityTurn()
   }
 
   startRound() {
@@ -172,9 +216,8 @@ class Game {
     for (let i=0; i<this.players.length; i++) {
       let player = this.players[i]
       player.turnOrder = i
-      console.log('player', player.name)
-      player.drawPile = this.drawPile.slice()
-      player.setCardOwner.apply(player)
+      player.drawPile = this.drawPile.map(a => Object.assign({}, a));
+      player.setCardOwner()
       player.discardPile = []
     }
 
@@ -189,7 +232,7 @@ class Game {
     if (this.turnInRound <= 5) {
       // EE.emit('startTurn')
       console.log('')
-      console.log('------------------', this.turnInRound)
+      console.log('------------------TurnInRound', this.turnInRound)
 
       this.promptSelectActions()
     } else {

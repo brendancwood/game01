@@ -1,92 +1,104 @@
+const EE = require('./eventemitter')
+
 module.exports.CARDS = [
   {
     name: 'dash',
-    user: null,
+    owner: null,
     priority: 1,
     reactive: false,
-    perform: function(x, y) {
-      console.log('performing action:', `${this.name} dash`)
+    perform: function(data) {
+      console.log('performing action:', `${data.x} ${data.y} dash`)
+      EE.emit('nextActionSequence')
     }
   },
   {
     name: 'hookshot',
-    user: null,
+    owner: null,
     priority: 2,
     reactive: false,
-    perform: function(x, y) {
-      console.log('performing action:', `${this.name} hookshot`)
+    perform: function(data) {
+      console.log('performing action:', `${data.x}-${data.y} hookshot`)
+      EE.emit('nextActionSequence')
     }
   },
   {
     name: 'bomb',
-    user: null,
+    owner: null,
     priority: 3,
     reactive: false,
-    perform: function(x, y) {
-      console.log('performing action:', `${this.name} bomb`)
+    perform: function(data) {
+      console.log('performing action:', `${data.x}-${data.y} bomb`)
+      EE.emit('nextActionSequence')
     }
   },
   {
     name: 'sword',
-    user: null,
+    owner: null,
     priority: 3,
     reactive: true,
-    perform: function(x, y) {
-      console.log('performing action:', `${this.name} sword`)
+    perform: function(data) {
+      console.log('performing action:', `${data.x}-${data.y} sword`)
+      EE.emit('nextActionSequence')
     }
   },
   {
     name: 'throwingstars',
-    user: null,
+    owner: null,
     priority: 3,
     reactive: false,
-    perform: function(x, y) {
-      console.log('performing action:', `${this.name} throwingstars`)
+    perform: function(data) {
+      console.log('performing action:', `${data.x}-${data.y} throwingstars`)
+      EE.emit('nextActionSequence')
     }
   },
   {
     name: 'vanish',
-    user: null,
+    owner: null,
     priority: 4,
     reactive: true,
-    perform: function(x, y) {
-      console.log('performing action:', `${this.name} vanish`)
+    perform: function(data) {
+      console.log('performing action:', `${data.x}-${data.y} vanish`)
+      EE.emit('nextActionSequence')
     }
   },
   {
     name: 'ninjaedit',
-    user: null,
+    owner: null,
     priority: 4,
     reactive: true,
-    perform: function(x, y) {
-      console.log('performing action:', `${this.name} ninjaedit`)
+    perform: function(data) {
+      console.log('performing action:', `${data.x}-${data.y} ninjaedit`)
+      EE.emit('nextActionSequence')
     }
   },
   {
     name: 'reflect',
-    user: null,
+    owner: null,
     priority: 4,
     reactive: true,
-    perform: function(x, y) {
-      console.log('performing action:', `${this.name} reflect`)
+    perform: function(data) {
+      console.log('performing action:', `${data.x}-${data.y} reflect`)
+      EE.emit('nextActionSequence')
     }
   },
   {
     name: 'knightmove',
-    user: null,
+    owner: null,
     priority: 5,
     reactive: false,
-    perform: function(x, y) {
-      console.log('performing action:', `${this.name} knightmove`)
+    perform: function(data) {
+      console.log('performing action:', `${data.x}-${data.y} knightmove`)
+      EE.emit('nextActionSequence')
     }
   },
   {
     name: 'move',
-    user: null,
+    owner: null,
     priority: 5,
     reactive: false,
-    perform: function(x, y) {
-      console.log('performing action:', `${this.name} move`)
+    perform: function(data) {
+      console.log('performing action:', `${data.x}-${data.y} move`)
+      EE.emit('nextActionSequence')
     }
   }
 ]

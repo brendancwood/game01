@@ -46,9 +46,7 @@ class Player {
 
   setCardOwner() {
     for (var i = 0; i < this.drawPile.length; i++) {
-      let card = this.drawPile[i]
-      console.log('this', this.name)
-      card.user = this
+      this.drawPile[i].owner = this
     }
   }
 
