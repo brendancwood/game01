@@ -1,0 +1,13 @@
+*.DS_Store
+
+# editors
+*.idea
+*.iml
+*.sublime-project
+*.sublime-workspace
+*.swp
+*~
+
+node_modules/
+/app/dist
+/app/node_modules
