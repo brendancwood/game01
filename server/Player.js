@@ -1,5 +1,5 @@
-const prompt = require('prompt')
 const EE = require('./eventemitter')
+const Action = require('./Action')
 
 class Player {
   constructor(name, lives) {
@@ -44,17 +44,20 @@ class Player {
 
   }
 
-  setCardOwner() {
+  setupRound() {
     for (var i = 0; i < this.drawPile.length; i++) {
-      this.drawPile[i].owner = this
+      let card = this.drawPile[i]
+      card.owner = this
+      card.action = new Action(card)
     }
+    this.discardPile = []
   }
 
   promptSelectCards() {
     // use sockets to listen for selections
     this.chooseCard(Math.floor(Math.random() * this.drawPile.length - 1), 0)
     this.chooseCard(Math.floor(Math.random() * this.drawPile.length - 1), 1)
-    EE.emit('playerHasSelectedCards', {name: this.name})
+    EE.emit('playerHasSelectedCards', {selectedCards: this.currentActions})
   }
 
   chooseCard(cardIndex, turnNumber) {

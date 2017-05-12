@@ -5,38 +5,44 @@
   3. Play to certain amount of points or deaths
   4. Initiate player of game
   5. All players choose 2 actions
-  6. For each priority, each player resolves their action, if there are reactive cards, they are resolved as well before moving on to the next player
+  6. For each priority, each player resolves their action, if there are reactive Cards, they are resolved as well before moving on to the next player
   7. Continue on until points, deaths.  Each round is composed of 5 turns.
   8. Start new round.
+
+
+
+  Each match consists of #rounds.
+    Rounds have 5 turns
+      Each turn has 2 phases
+        Each phase has #player actions
 */
+
 const EE = require('./eventemitter')
 
 const Player = require('./Player')
 const Tile = require('./Tile')
-const { CARDS, Card } = require('./Card')
+const Cards = require('./Cards')
 
 class Game {
   constructor(numOfPlayers, type='HARDCORE', numberOfPointsToWin=1000, numberOfLives=1000) {
-    this.gameStates = {
-      SETUP     : 'SETUP',
-      INPROGRESS: 'INPROGRESS',
-      GAMEOVER  : 'GAMEOVER'
+    this.state = {
+      numOfPlayers: numOfPlayers,
+      type: type,
+      grid: null,
+      players: [],
+      currentActions: [[], []],
+      roundNumber: 0,
+      phaseNumber: 0,
+      turnInRound: 0,
+      counter: 0,
+      priorityNumber: 0,
+      priorityLimit: 5,
+      numberOfLives: null,
+      numberOfPointsToWin: null,
+      drawPile: [],
+      waitingOnNumberOfPlayers: numOfPlayers,
+      CURRENT_STATE: 'SETUP'
     }
-
-    this.numOfPlayers = numOfPlayers
-    this.type = type
-    this.grid = null
-    this.players = []
-    this.roundNumber = 0
-    this.phaseNumber = 0
-    this.turnInRound = 0
-    this.priorityNumber = 0
-    this.priorityLimit = 5
-    this.numberOfLives = null
-    this.numberOfPointsToWin = null
-    this.gameState = this.gameStates.SETUP
-    this.drawPile = []
-    this.waitingOnNumberOfPlayers = this.numOfPlayers
 
     this.setWinningConditions(type, numberOfPointsToWin, numberOfLives)
     this.setupGrid(4) // default game is 4x4
@@ -44,32 +50,32 @@ class Game {
   }
 
   setWinningConditions(type, points, lives) {
-    if (this.gameState === this.gameStates.INPROGRESS) {
-      return
-    }
+    // if (this.state.METASTATE === this.METASTATES.INPROGRESS) {
+    //   return
+    // }
 
-    this.numberOfPointsToWin = points
-    this.numberOfLives = lives
+    this.state.numberOfPointsToWin = points
+    this.state.numberOfLives = lives
   }
 
   setupGrid(amountOfSquares) {
-    if (this.numOfPlayers > 4) {
+    if (this.state.numOfPlayers > 4) {
       amountOfSquares++
 
-      if (this.numOfPlayers > 6) {
+      if (this.state.numOfPlayers > 6) {
         amountOfSquares++
       }
     }
 
     for (var i = 0; i < amountOfSquares; i++) {
-      if (this.grid === null) {
-        this.grid = [[]]
+      if (this.state.grid === null) {
+        this.state.grid = [[]]
       } else {
-        this.grid.push([])
+        this.state.grid.push([])
       }
 
       for (var j = 0; j < amountOfSquares; j++) {
-        this.grid[i].push(new Tile(i, j))
+        this.state.grid[i].push(new Tile(i, j))
       }
     }
   }
@@ -78,175 +84,164 @@ class Game {
     const defaultNames = ['Abe', 'Beau', 'Chris', 'Doug', 'Eliz', 'Frank', 'GEORGE', 'Helga']
     for (var i = 0; i < num; i++) {
       let name = defaultNames.pop()
-      this.players.push(new Player(name, this.numberOfLives))
+      this.state.players.push(new Player(name, this.state.numberOfLives))
     }
   }
 
   createDrawPile() {
-    this.drawPile = []
-    for (var i = 0; i < CARDS.length; i++) {
-      this.drawPile.push(CARDS[i])
+    this.state.drawPile = []
+    for (var i = 0; i < Cards.length; i++) {
+      this.state.drawPile.push(Cards[i])
     }
   }
 
   getState() {
-    console.log(this)
+    console.log(this.state)
   }
 
   logPlayerProp(string, prop) {
-    for (var i = 0; i < this.players.length; i++) {
-     console.log(string, this.players[i][prop])
+    for (var i = 0; i < this.state.players.length; i++) {
+     console.log(string, this.state.players[i][prop])
     }
   }
 
   sortPlayersInTurnOrder() {
     // make first player last, then reassign turnOrder
-    const firstPlayer = this.players.shift()
-    this.players.push(firstPlayer)
-    for (var i = 0; i < this.players.length; i++) {
-      this.players[i].turnOrder = i
+    const firstPlayer = this.state.players.shift()
+    this.state.players.push(firstPlayer)
+    for (var i = 0; i < this.state.players.length; i++) {
+      this.state.players[i].turnOrder = i
     }
   }
 
   promptSelectActions() {
-    for (let i = 0; i < this.players.length; i++) {
-      this.players[i].promptSelectCards()
+    for (let i = 0; i < this.state.players.length; i++) {
+      this.state.players[i].promptSelectCards()
     }
   }
 
-  decrementWaitingOn() {
-    if (this.waitingOnNumberOfPlayers > 0) {
-      this.waitingOnNumberOfPlayers--
+  decrementWaitingOn(selectedCards) {
+    if (this.state.waitingOnNumberOfPlayers > 0) {
+      this.state.waitingOnNumberOfPlayers--
+      this.state.currentActions[0].push(selectedCards[0])
+      this.state.currentActions[1].push(selectedCards[1])
     }
-    if (this.waitingOnNumberOfPlayers === 0) {
+    if (this.state.waitingOnNumberOfPlayers === 0) {
       EE.emit('allPlayersReady')
-      this.doTurn()
+      this.state.priorityNumber = 0
+      this.startPhase()
     }
   }
 
-  resolveActionsOnPriority(actionList, nextPriorityCallback) {
-    if (actionList.length === 0) {
-      return
-    }
+  sortPhaseActions(phaseNumber) {
+    let currentActions = this.state.currentActions[phaseNumber]
+    currentActions.sort((a,b) => {
+      if (a.priority < b.priority) return -1
+      if (a.priority > b.priority) return 1
+      return 0
+    })
 
-    debugger
-
-    let counter = 0
-    let action = null
-
-    const doActionSequence = function(){
-      debugger
-      action = actionList[counter]
-      console.log(action.owner.name, action.name)
-      EE.on(`${action.owner.name}:actionInputDone`, action.perform)
-      EE.emit(`${action.owner.name}:needActionInput`, {player: action.owner, action: action})
-    }
-
-    const handleNextActionSequence = function(data) {
-      EE.removeListener(`${action.owner.name}:actionInputDone`, action.perform)
-      counter++
-
-      console.log('handlingNextActionSequece, counter=', counter)
-
-      if (counter !== actionList.length) {
-        doActionSequence()
-      } else {
-        EE.removeListener('nextActionSequence', handleNextActionSequence)
-        nextPriorityCallback()
-      }
-    }
-
-    EE.on('nextActionSequence', handleNextActionSequence)
-
-    doActionSequence()
+    currentActions.sort((a,b) => {
+      if (a.owner.turnOrder < b.owner.turnOrder) return -1
+      if (a.owner.turnOrder > b.owner.turnOrder) return 1
+      return 0
+    })
   }
 
-  doTurn() {
-    console.log('phaseNumber:', this.phaseNumber)
-    this.priorityNumber = 1
+  performActionAfterInput(data) {
+    this.state.currentAction.performActionFn(data)
+  }
 
-    const doPriorityTurn = () => {
-      let actionsOnThisPriority = []
-      for (var k = 0; k < this.players.length; k++) {
-        const player = this.players[k]
+  processPriority() {
+    // the actions are sorted
+    // while (thereAreActionsInList)
+    //   get current action, does it need player input?
+    //     ask player for input, wait for player input, receive input
+    //   execute player input action, see affect
+    //     build list of players affected
+    //     loop through players and check if they have counter
+    //       2 players do:
+    //         for player in players
+    //           ask for player input
+    let action = this.state.currentActions[this.state.phaseNumber][this.state.counter].action
+    this.state.currentAction = action
+    console.log(action)
+    action.tryToPerform()
+  }
 
-        if (player.currentActions[this.phaseNumber] === null) {
-          continue
-        }
-
-        let currentPlayerAction = player.currentActions[this.phaseNumber]
-        if (currentPlayerAction.priority === this.priorityNumber) {
-          actionsOnThisPriority.push(currentPlayerAction)
-
-          // move these after resolving!!!!!!!!
-          player.discardPile.push(currentPlayerAction)
-          player.currentActions[this.phaseNumber] = null
-        }
-      }
-
-      // all actions on this priority are queued up, resolve them
-      console.log('before resolving', this.priorityNumber)
-      this.resolveActionsOnPriority(actionsOnThisPriority, () => {
-        debugger
-        if (this.priorityNumber <= this.priorityLimit) {
-          this.priorityNumber++
-          doPriorityTurn()
-        }
-        else {
-          if (this.phaseNumber < 1) {
-            this.phaseNumber++
-            this.doTurn()
-          }
-          else {
-            this.sortPlayersInTurnOrder()
-            this.startTurn()
-          }
-        }
-      })
+  endPriority() {
+    if (this.state.priorityNumber < this.state.priorityLimit) {
+      this.state.priorityNumber++
+      this.processPriority()
+    } else {
+      this.endPhase()
     }
+  }
 
-    doPriorityTurn()
+  endPhase() {
+    if (this.state.phaseNumber < 1) {
+      this.state.phaseNumber++
+      this.startPhase()
+    } else {
+      this.sortPlayersInTurnOrder()
+      this.startTurn()
+    }
+  }
+
+  startPhase() {
+    this.sortPhaseActions(this.state.phaseNumber)
+    this.state.CURRENT_STATE = `PROCESS_PHASE${this.state.phaseNumber}`
+    this.processPriority()
+  }
+
+  startTurn() {
+    this.state.turnInRound++
+    this.waitingOnNumberOfPlayers = this.state.numOfPlayers
+    this.state.CURRENT_STATE = 'CARD_SELECTION'
+    this.state.phaseNumber = 0
+
+    if (this.state.turnInRound <= 5) {
+      console.log('------------------TurnInRound', this.state.turnInRound)
+
+      this.broadcastState()
+      // this.promptSelectActions()
+    } else {
+      // Round Over, start new round, check if its only a 1 round game, etc
+      // this.startRound()
+    }
   }
 
   startRound() {
-    this.turnInRound = 0
-    this.roundNumber++
+    this.state.roundNumber++
+    this.state.turnInRound = 0
     this.createDrawPile()
 
-    for (let i=0; i<this.players.length; i++) {
-      let player = this.players[i]
+    for (let i=0; i < this.state.players.length; i++) {
+      let player = this.state.players[i]
       player.turnOrder = i
-      player.drawPile = this.drawPile.map(a => Object.assign({}, a));
-      player.setCardOwner()
-      player.discardPile = []
+      player.drawPile = this.state.drawPile.map(a => Object.assign({}, a)) // deep copy drawpile
+      player.setupRound()
     }
 
     this.startTurn()
   }
 
-  startTurn() {
-    this.waitingOnNumberOfPlayers = this.numOfPlayers
-    this.phaseNumber = 0
-    this.turnInRound++
-
-    if (this.turnInRound <= 5) {
-      // EE.emit('startTurn')
-      console.log('')
-      console.log('------------------TurnInRound', this.turnInRound)
-
-      this.promptSelectActions()
-    } else {
-      // Round Over, start new round
-    }
-  }
-
   playGame() {
+    // EE.on('PLAYERINPUT', (data) {
+    //   switch (data.)
+    // })
     this.startRound()
   }
 
   main() {
     this.playGame()
   }
+
+  broadcastState() {
+    EE.emit('GAMESTATE', this.state)
+  }
+
 }
 
 module.exports = Game
+

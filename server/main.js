@@ -1,29 +1,48 @@
 const EE = require('./eventemitter')
 const Game = require('./Game')
 
-gameInstance = new Game(4)
+const gameInstance = new Game(4)
 
 EE.on('startTurn', () => {
   gameInstance.promptSelectActions()
 })
 
-EE.on('playerHasSelectedCards', (data) => {
-  gameInstance.decrementWaitingOn()
+EE.on('playerHasSelectedCards', ({selectedCards}) => {
+  gameInstance.decrementWaitingOn(selectedCards)
 })
 
 EE.on('allPlayersReady', () => {
   // gameInstance.doTurn()
 })
 
+EE.on('GAMESTATE', (state) => {
+  switch (state.CURRENT_STATE) {
+    case 'CARD_SELECTION':
+      for (let player of gameInstance.state.players) {
+        player.promptSelectCards()
+      }
+      break;
 
-randomNum = (max) => Math.floor(Math.random() * max)
+    default:
+      return
+  }
+})
 
-for (var i = 0; i < gameInstance.players.length; i++) {
-  EE.on(`${gameInstance.players[i].name}:needActionInput`, ({player, action}) => {
-    console.log('on received', player.name, action.name)
+
+const randomNum = (max) => Math.floor(Math.random() * max)
+
+for (let player of gameInstance.state.players) {
+  EE.on(`${player.name}:request`, ({action}) => {
+    console.log('on request', action)
     let xy = {x: randomNum(4), y: randomNum(4)}
-    EE.emit(`${action.owner.name}:actionInputDone`, xy)
+    EE.emit(`${player.name}:response`, xy)
   })
+
+  EE.on(`${player.name}:response`, (data) => {
+    console.log('on response', data)
+    gameInstance.performActionAfterInput(data)
+  })
+
 }
 
 gameInstance.main()
