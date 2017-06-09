@@ -163,10 +163,9 @@ class Game {
     //       2 players do:
     //         for player in players
     //           ask for player input
-    let action = this.state.currentActions[this.state.phaseNumber][this.state.counter].action
-    this.state.currentAction = action
-    console.log(action)
-    action.tryToPerform()
+    let firstAction = this.state.currentActions[this.state.phaseNumber][this.state.counter].action
+    this.state.currentAction = firstAction
+    firstAction.tryToPerform()
   }
 
   endPriority() {

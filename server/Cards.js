@@ -10,6 +10,7 @@ module.exports = [
       console.log(x, y)
       this.owner.x = x
       this.owner.y = y
+
     }
   },
   {
@@ -20,7 +21,15 @@ module.exports = [
     needsInput: true,
     actionFn: function({x, y}) {
       console.log('performing actionFn', this.name)
-      console.log(x, y)
+      // +-x +-y
+      // [
+      // [0, 0, 0, 0, 0],
+      // [0, 0, 0, 0, 0],
+      // [0, 0, 0, 0, 0],
+      // [0, 0, 0, 0, 0],
+      // [0, 0, 0, 0, 0]
+      // ]
+
       this.owner.x = x
       this.owner.y = y
     }
